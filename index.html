@@ -1,128 +1,358 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Snake Game</title>
+  <meta charset="UTF-8">
+  <title>Animation Game: Catch the Ball</title>
   <style>
-    body {
-      margin: 0;
-      background: #111;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      color: white;
-      font-family: sans-serif;
-    }
-
-    canvas {
-      background: #000;
-      border: 2px solid #0f0;
-    }
+    body { margin: 0; background: #222; color: #fff; font-family: sans-serif; }
+    #gameCanvas { background: #333; display: block; margin: 40px auto; border-radius: 10px; }
+    #score { text-align: center; font-size: 1.5em; }
   </style>
 </head>
 <body>
-  <canvas id="game" width="400" height="400"></canvas>
-
+  <div id="score">Score: 0</div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
   <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
 
-    const gridSize = 20;
-    const tileCount = canvas.width / gridSize;
-
-    let snake = [{ x: 10, y: 10 }];
-    let velocity = { x: 0, y: 0 };
-    let food = {
-      x: Math.floor(Math.random() * tileCount),
-      y: Math.floor(Math.random() * tileCount),
+    // Paddle
+    const paddle = {
+      w: 80,
+      h: 15,
+      x: canvas.width / 2 - 40,
+      y: canvas.height - 30,
+      speed: 7,
+      dx: 0
     };
 
-    function gameLoop() {
-      update();
-      draw();
+    // Ball
+    const ball = {
+      r: 15,
+      x: Math.random() * (canvas.width - 30) + 15,
+      y: -15,
+      dy: 4
+    };
+
+    let score = 0;
+    let gameOver = false;
+
+    function drawPaddle() {
+      ctx.fillStyle = '#0af';
+      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
     }
 
-    function update() {
-      const head = {
-        x: snake[0].x + velocity.x,
-        y: snake[0].y + velocity.y,
-      };
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff0';
+      ctx.fill();
+      ctx.closePath();
+    }
 
-      // Check wall collision
+    function movePaddle() {
+      paddle.x += paddle.dx;
+      if (paddle.x < 0) paddle.x = 0;
+      if (paddle.x + paddle.w > canvas.width) paddle.x = canvas.width - paddle.w;
+    }
+
+    function moveBall() {
+      ball.y += ball.dy;
+      // Collision with paddle
       if (
-        head.x < 0 || head.x >= tileCount ||
-        head.y < 0 || head.y >= tileCount
+        ball.y + ball.r > paddle.y &&
+        ball.x > paddle.x &&
+        ball.x < paddle.x + paddle.w
       ) {
-        resetGame();
-        return;
+        score++;
+        scoreEl.textContent = 'Score: ' + score;
+        resetBall();
       }
-
-      // Check self collision
-      for (let segment of snake) {
-        if (head.x === segment.x && head.y === segment.y) {
-          resetGame();
-          return;
-        }
+      // Missed
+      if (ball.y - ball.r > canvas.height) {
+        gameOver = true;
       }
+    }
 
-      snake.unshift(head);
-
-      // Check food collision
-      if (head.x === food.x && head.y === food.y) {
-        food = {
-          x: Math.floor(Math.random() * tileCount),
-          y: Math.floor(Math.random() * tileCount),
-        };
-      } else {
-        snake.pop();
-      }
+    function resetBall() {
+      ball.x = Math.random() * (canvas.width - 30) + 15;
+      ball.y = -15;
+      ball.dy += 0.3; // Speed up
     }
 
     function draw() {
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw snake
-      ctx.fillStyle = "lime";
-      for (let segment of snake) {
-        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
-      }
-
-      // Draw food
-      ctx.fillStyle = "red";
-      ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPaddle();
+      drawBall();
     }
 
-    function resetGame() {
-      snake = [{ x: 10, y: 10 }];
-      velocity = { x: 0, y: 0 };
-      food = {
-        x: Math.floor(Math.random() * tileCount),
-        y: Math.floor(Math.random() * tileCount),
-      };
-      alert("Game Over! Press OK to restart.");
+    function update() {
+      if (gameOver) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '2em sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
+        ctx.font = '1.2em sans-serif';
+        ctx.fillText('Final Score: ' + score, canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 80);
+        return;
+      }
+      movePaddle();
+      moveBall();
+      draw();
+      requestAnimationFrame(update);
     }
 
-    document.addEventListener("keydown", (e) => {
-      switch (e.key) {
-        case "ArrowUp":
-          if (velocity.y === 0) velocity = { x: 0, y: -1 };
-          break;
-        case "ArrowDown":
-          if (velocity.y === 0) velocity = { x: 0, y: 1 };
-          break;
-        case "ArrowLeft":
-          if (velocity.x === 0) velocity = { x: -1, y: 0 };
-          break;
-        case "ArrowRight":
-          if (velocity.x === 0) velocity = { x: 1, y: 0 };
-          break;
-      }
+    // Controls
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowLeft') paddle.dx = -paddle.speed;
+      if (e.key === 'ArrowRight') paddle.dx = paddle.speed;
+    });
+    document.addEventListener('keyup', function(e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') paddle.dx = 0;
     });
 
-    setInterval(gameLoop, 100);
+    update();
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Animation Game: Catch the Ball</title>
+  <style>
+    body { margin: 0; background: #222; color: #fff; font-family: sans-serif; }
+    #gameCanvas { background: #333; display: block; margin: 40px auto; border-radius: 10px; }
+    #score { text-align: center; font-size: 1.5em; }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0</div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+
+    // Paddle
+    const paddle = {
+      w: 80,
+      h: 15,
+      x: canvas.width / 2 - 40,
+      y: canvas.height - 30,
+      speed: 7,
+      dx: 0
+    };
+
+    // Ball
+    const ball = {
+      r: 15,
+      x: Math.random() * (canvas.width - 30) + 15,
+      y: -15,
+      dy: 4
+    };
+
+    let score = 0;
+    let gameOver = false;
+
+    function drawPaddle() {
+      ctx.fillStyle = '#0af';
+      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff0';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function movePaddle() {
+      paddle.x += paddle.dx;
+      if (paddle.x < 0) paddle.x = 0;
+      if (paddle.x + paddle.w > canvas.width) paddle.x = canvas.width - paddle.w;
+    }
+
+    function moveBall() {
+      ball.y += ball.dy;
+      // Collision with paddle
+      if (
+        ball.y + ball.r > paddle.y &&
+        ball.x > paddle.x &&
+        ball.x < paddle.x + paddle.w
+      ) {
+        score++;
+        scoreEl.textContent = 'Score: ' + score;
+        resetBall();
+      }
+      // Missed
+      if (ball.y - ball.r > canvas.height) {
+        gameOver = true;
+      }
+    }
+
+    function resetBall() {
+      ball.x = Math.random() * (canvas.width - 30) + 15;
+      ball.y = -15;
+      ball.dy += 0.3; // Speed up
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPaddle();
+      drawBall();
+    }
+
+    function update() {
+      if (gameOver) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '2em sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
+        ctx.font = '1.2em sans-serif';
+        ctx.fillText('Final Score: ' + score, canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 80);
+        return;
+      }
+      movePaddle();
+      moveBall();
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    // Controls
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowLeft') paddle.dx = -paddle.speed;
+      if (e.key === 'ArrowRight') paddle.dx = paddle.speed;
+    });
+    document.addEventListener('keyup', function(e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') paddle.dx = 0;
+    });
+
+    update();
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Animation Game: Catch the Ball</title>
+  <style>
+    body { margin: 0; background: #222; color: #fff; font-family: sans-serif; }
+    #gameCanvas { background: #333; display: block; margin: 40px auto; border-radius: 10px; }
+    #score { text-align: center; font-size: 1.5em; }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0</div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+
+    // Paddle
+    const paddle = {
+      w: 80,
+      h: 15,
+      x: canvas.width / 2 - 40,
+      y: canvas.height - 30,
+      speed: 7,
+      dx: 0
+    };
+
+    // Ball
+    const ball = {
+      r: 15,
+      x: Math.random() * (canvas.width - 30) + 15,
+      y: -15,
+      dy: 4
+    };
+
+    let score = 0;
+    let gameOver = false;
+
+    function drawPaddle() {
+      ctx.fillStyle = '#0af';
+      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff0';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function movePaddle() {
+      paddle.x += paddle.dx;
+      if (paddle.x < 0) paddle.x = 0;
+      if (paddle.x + paddle.w > canvas.width) paddle.x = canvas.width - paddle.w;
+    }
+
+    function moveBall() {
+      ball.y += ball.dy;
+      // Collision with paddle
+      if (
+        ball.y + ball.r > paddle.y &&
+        ball.x > paddle.x &&
+        ball.x < paddle.x + paddle.w
+      ) {
+        score++;
+        scoreEl.textContent = 'Score: ' + score;
+        resetBall();
+      }
+      // Missed
+      if (ball.y - ball.r > canvas.height) {
+        gameOver = true;
+      }
+    }
+
+    function resetBall() {
+      ball.x = Math.random() * (canvas.width - 30) + 15;
+      ball.y = -15;
+      ball.dy += 0.3; // Speed up
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPaddle();
+      drawBall();
+    }
+
+    function update() {
+      if (gameOver) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '2em sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
+        ctx.font = '1.2em sans-serif';
+        ctx.fillText('Final Score: ' + score, canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 80);
+        return;
+      }
+      movePaddle();
+      moveBall();
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    // Controls
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowLeft') paddle.dx = -paddle.speed;
+      if (e.key === 'ArrowRight') paddle.dx = paddle.speed;
+    });
+    document.addEventListener('keyup', function(e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') paddle.dx = 0;
+    });
+
+    update();
   </script>
 </body>
 </html>
